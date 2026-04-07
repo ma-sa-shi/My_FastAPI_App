@@ -1,27 +1,16 @@
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, status, UploadFile, File
 from passlib.context import CryptContext
 from pydantic import BaseModel
-import pymysql
-import os
+from pathlib import Path
+from database import get_db_connection, init_db
 
 app = FastAPI()
-
-# 計算に時間がかかるbcryt採用、deprecatedなアルゴリズム自動更新
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto") 
-
-def get_db_connection():
-    return pymysql.connect(
-        host="rdb",
-        user="root",
-        password=os.getenv("MYSQL_ROOT_PASSWORD"),
-        database=os.getenv("MYSQL_DATABASE"),
-        port=3306,
-        # 取得結果を辞書で受け取るresult = {"id": 1, "name": "tanaka"}
-        cursorclass=pymysql.cursors.DictCursor 
-    )
+init_db()
+# bcryptはバイト数制約があるためargon2採用
+pwd_context = CryptContext(schemes=["argon2"], deprecated="auto") 
 
 class User(BaseModel):
-    userId: str
+    username: str
     password: str
 
 @app.get("/")
@@ -34,15 +23,15 @@ def post_register(user: User):
     try:
         with connection.cursor() as cursor:
             # 登録済みか確認するSQL
-            check_sql = "SELECT userId FROM users WHERE userId = %s"
-            cursor.execute(check_sql, (user.userId,))
+            check_sql = "SELECT username FROM users WHERE username = %s"
+            cursor.execute(check_sql, (user.username,))
             if cursor.fetchone():
-                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="User already exists")
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="username already exists")
             hashed_pwd = pwd_context.hash(user.password)
-            sql = "INSERT INTO users (userId, password) VALUES (%s, %s)"
-            cursor.execute(sql, (user.userId, hashed_pwd))
+            sql = "INSERT INTO users (username, hashed_password) VALUES (%s, %s)"
+            cursor.execute(sql, (user.username, hashed_pwd))
             connection.commit()
-        return {"message": "register success", "user": user.userId}
+        return {"message": "register success", "username": user.username}
     finally:
         connection.close()
 
@@ -51,11 +40,49 @@ def post_login(user: User):
     connection = get_db_connection()
     try:
         with connection.cursor() as cursor:
-            sql = "SELECT password FROM users WHERE userId = %s"
-            cursor.execute(sql, (user.userId,))
+            sql = "SELECT user_id, hashed_password FROM users WHERE username = %s"
+            cursor.execute(sql, (user.username,))
             result = cursor.fetchone()
-            if not result or not pwd_context.verify(user.password, result['password']):
+            if not result or not pwd_context.verify(user.password, result['hashed_password']):
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid userId or password")
-        return {"message": "Login success",  "user": user.userId}
+        return {"message": "Login success", "user_id": result['user_id'] ,"username": user.username}
     finally:
         connection.close()
+
+ALLOWED_EXTENSIONS = {".pdf", ".docx", ".txt", ".md"}
+UPLOAD_DIR = "./storage/upload/"
+@app.post("/upload/", status_code=status.HTTP_200_OK)
+async def upload_file(user_id: int, file: UploadFile = File(...)):
+    # ディレクトリ作成
+    UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
+    # 拡張子チェック
+    ext = Path(file.filename).suffix.lower()
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(
+            status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
+            detail=f"Extention {ext} is not allowed. Only {', '.join(ALLOWED_EXTENSIONS)} is permitted"
+        )
+
+    file_path = Path(UPLOAD_DIR) / file.filename
+
+    # ファイル保存
+    try:
+        contents = await file.read()
+        with open(file_path, "wb") as f:
+            f.write(contents)
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail=f"{str(e)}")
+    finally:
+        await file.close()
+    # DBにメタデータ保存
+    connection = get_db_connection()
+    try:
+        with connection.cursor() as cursor:
+            sql = "INSERT INTO docs (user_id, dir_path, filename) VALUES (%s, %s, %s)"
+            cursor.execute(sql, (user_id, UPLOAD_DIR, file.filename))
+            connection.commit()
+    finally:
+        connection.close()
+
+    return {"messege": "upload success", "fileName": file.filename}

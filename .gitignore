@@ -1,1 +1,4 @@
 .env
+__pycache__/
+app1/server/storage/upload/*
+!app1/server/storage/upload/.gitkeep
