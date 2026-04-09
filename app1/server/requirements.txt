@@ -7,3 +7,4 @@ cryptography # 暗号化
 passlib[argon2]
 python-multipart
 python-dotenv
+python-jose[cryptography]

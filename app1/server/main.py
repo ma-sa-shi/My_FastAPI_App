@@ -3,6 +3,7 @@ from passlib.context import CryptContext
 from pydantic import BaseModel
 from pathlib import Path
 from database import get_db_connection, init_db
+from auth import create_access_token
 
 app = FastAPI()
 init_db()
@@ -11,6 +12,7 @@ pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
 
 class User(BaseModel):
     username: str
+    is_admin: bool
     password: str
 
 @app.get("/")
@@ -28,10 +30,10 @@ def post_register(user: User):
             if cursor.fetchone():
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="username already exists")
             hashed_pwd = pwd_context.hash(user.password)
-            sql = "INSERT INTO users (username, hashed_password) VALUES (%s, %s)"
-            cursor.execute(sql, (user.username, hashed_pwd))
+            sql = "INSERT INTO users (username, is_admin, hashed_password) VALUES (%s, %s, %s)"
+            cursor.execute(sql, (user.username, user.is_admin, hashed_pwd))
             connection.commit()
-        return {"message": "register success", "username": user.username}
+        return {"message": "register success", "username": user.username, "is_admin": user.is_admin}
     finally:
         connection.close()
 
@@ -40,12 +42,13 @@ def post_login(user: User):
     connection = get_db_connection()
     try:
         with connection.cursor() as cursor:
-            sql = "SELECT user_id, hashed_password FROM users WHERE username = %s"
+            sql = "SELECT user_id, is_admin, hashed_password FROM users WHERE username = %s"
             cursor.execute(sql, (user.username,))
             result = cursor.fetchone()
             if not result or not pwd_context.verify(user.password, result['hashed_password']):
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid userId or password")
-        return {"message": "Login success", "user_id": result['user_id'] ,"username": user.username}
+            token = create_access_token({"user_id": result["user_id"], "is_admin": bool(result["is_admin"])})
+        return {"message": "Login success", "access_token": token, "token_type": "bearer", "user_id": result['user_id'], "is_admin": bool(result["is_admin"]), "username": user.username}
     finally:
         connection.close()
 
