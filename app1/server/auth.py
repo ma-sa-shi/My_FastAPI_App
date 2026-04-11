@@ -11,7 +11,7 @@ ALGORITHM=os.getenv("ALGORITHM")
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
-# トークン生成、引数は{"user_id":, "is_admin"}
+# トークン生成、引数は{"user_id":, "is_admin":}
 def create_access_token(data: dict):
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + timedelta(minutes=60)
@@ -24,3 +24,11 @@ def get_current_user(token: str = Depends(oauth2_scheme)):
         return jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     except jwt.PyJWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="can't validate credentials")
+
+def get_current_admin(current_user: dict = Depends(get_current_user)):
+    if not current_user.get("is_admin"):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="need an admin permission"
+        )
+    return current_user
