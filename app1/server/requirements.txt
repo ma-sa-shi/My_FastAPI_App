@@ -1,6 +1,6 @@
 fastapi
 uvicorn[standard] # webサーバー
-google-generativeai #APIキーを使ってgeminiを呼び出す
+google-genai==1.72.0 
 chromadb #ChromaDBと通信しベクトルデータの保存や検索を行う
 pymysql #MySQLドライバー
 cryptography # 暗号化
