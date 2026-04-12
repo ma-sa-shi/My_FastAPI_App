@@ -71,7 +71,7 @@ async def upload_file(file: UploadFile = File(...), current_admin: dict = Depend
     if ext not in ALLOWED_EXTENSIONS:
         raise HTTPException(
             status_code=status.HTTP_415_UNSUPPORTED_MEDIA_TYPE,
-            detail=f"Extention {ext} is not allowed. Only {', '.join(ALLOWED_EXTENSIONS)} is permitted"
+            detail=f"Extention {ext} is not allowed. Only {", ".join(ALLOWED_EXTENSIONS)} is permitted"
         )
     file_path = Path(UPLOAD_DIR) / file.filename
     
@@ -82,7 +82,7 @@ async def upload_file(file: UploadFile = File(...), current_admin: dict = Depend
             f.write(contents)
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                            detail=f"{str(e)}")
+                            detail=str(e))
     finally:
         await file.close()
     

@@ -1,4 +1,6 @@
-.env
+app1/.env
 __pycache__/
 app1/server/storage/upload/*
 !app1/server/storage/upload/.gitkeep
+app1/server/debug_response.json
+app1/server/temp.py
