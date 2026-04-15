@@ -13,7 +13,7 @@ client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
 
 # 再帰的文字分割へ後にアップグレードする
 # 固定長チャンク関数
-def split_text(text: str, chunk_size: int, overlap: int) -> list[str]
+def split_text(text: str, chunk_size: int, overlap: int) -> list[str]:
     chunks: list[str] = []
     start: int = 0
 
