@@ -2,10 +2,12 @@ import pymysql
 import os
 import time
 from dotenv import load_dotenv
+from pymysql.connections import Connection
+from pymysql.cursors import DictCursor
 
 load_dotenv()
 
-def get_db_connection():
+def get_db_connection() -> Connection:
     return pymysql.connect(
         host="rdb",
         user="root",
@@ -13,18 +15,18 @@ def get_db_connection():
         database=os.getenv("MYSQL_DATABASE"),
         port=3306,
         # 取得結果を辞書で受け取るresult = {"id": 1, "name": "shimizu"}
-        cursorclass=pymysql.cursors.DictCursor,
+        cursorclass=DictCursor,
         client_flag=pymysql.constants.CLIENT.MULTI_STATEMENTS 
     )
 
-def init_db():
+def init_db() -> None:
     with open("init.sql", "r") as f:
-        sql = f.read()
+        sql: str = f.read()
 
     connection = None
     for i in range(10):
         try:
-            connection = get_db_connection()
+            connection: Connection = get_db_connection()
             break
         except pymysql.err.OperationalError as e:
             time.sleep(2)

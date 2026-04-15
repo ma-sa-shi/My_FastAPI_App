@@ -3,6 +3,8 @@ from google.genai import types
 import chromadb
 import os
 from dotenv import load_dotenv
+from typing import Any
+from chromadb.api.models.Collection import Collection
 # import pprint
 # import json
 
@@ -11,30 +13,33 @@ client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
 
 # 再帰的文字分割へ後にアップグレードする
 # 固定長チャンク関数
-def split_text(text, chunk_size, overlap):
-    chunks = []
-    start = 0
+def split_text(text: str, chunk_size: int, overlap: int) -> list[str]:
+    chunks: list[str] = []
+    start: int = 0
 
     while start < len(text):
         end = start + chunk_size
         chunk = text[start:end]
         chunks.append(chunk)
+        
         # 次のスタート位置        
         start += (chunk_size - overlap)
-        
+
         # 残り文字数がoverlap以下ならループ終了
         if start >= len(text) - overlap and len(text) > chunk_size:
-            break       
+            break
+       
     return chunks
 
 # Gemini APIによりテキストをベクトル化(embedding)
 # 文字列のリスト(chunks)を渡して3072次元のベクトルを返す
-def get_embeddings(chunks):
+def get_embeddings(chunks: list[str]) -> list[list[float]]:
     if not chunks:
         return []
 
     # 3072次元のベクトルに変換するモデル
-    model = "models/gemini-embedding-2-preview" 
+    model: str = "models/gemini-embedding-2-preview" 
+    
     try:
         requests = [types.Content(parts=[types.Part(text=c)]) for c in chunks]
         result = client.models.embed_content(
@@ -58,11 +63,13 @@ def get_embeddings(chunks):
         print(e)
         raise
 
-# ids:List[str] ["id1", "id2", "id3"]
-# embeddings:List[List[float]] [[0.1, 0.2, ...], [0.3, -0.4, ...]]
-# documents:List[str]  ["ragを実装してます。", "chromadbをsetupします。"]
-# metadatas:List[dict] [{"source": "pdf"}, {"page": 5, "author": "Shimizu"}]
-def upsert_to_chromadb(collection, ids, embeddings, documents, metadatas):
+def upsert_to_chromadb(
+    collection: Collection,
+    ids: list[str],
+    embeddings: list[list[float]], 
+    documents: list[str],
+    metadatas: list[dict[str, Any]]
+) -> None:
     collection.upsert(
         ids=ids,
         embeddings=embeddings,
