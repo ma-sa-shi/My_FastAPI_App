@@ -4,7 +4,7 @@ google-genai==1.72.0
 chromadb #ChromaDBと通信しベクトルデータの保存や検索を行う
 pymysql #MySQLドライバー
 cryptography # 暗号化
-passlib[argon2]
+argon2-cffi
 python-multipart
 python-dotenv
 python-jose[cryptography]
