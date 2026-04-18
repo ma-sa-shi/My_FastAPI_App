@@ -11,11 +11,15 @@ import pymupdf
 from pathlib import Path
 from database import get_db_connection
 from datetime import datetime
+from typing import cast
 # import pprint
 # import json
 
 load_dotenv()
 client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
+
+chroma_client = chromadb.PersistentClient(path="./chroma_db")
+collection: Collection = chroma_client.get_or_create_collection(name="rag_app")
 
 # 再帰的文字分割へ後にアップグレードする
 # 固定長チャンク関数
@@ -121,24 +125,19 @@ def run_ingest_pipeline(doc_id: int, file_path: Path, user_id: int, created_at:d
 
         embeddings:Embeddings = get_embeddings(chunks)
 
-        chroma_client = chromadb.PersistentClient(path="./chroma_db")
-        collection: Collection = chroma_client.get_or_create_collection(name="rag_app")
-
-
         ids: list[str] = [f"{doc_id}_{i}" for i in range(len(chunks))]
-        created_at_str = created_at.isoformat()
+
         metadatas: Metadatas = [
             {
                 "doc_id": doc_id,
                 "user_id": user_id,
                 "filename": file_path.name,
                 "chunk_index": i,
-                "created_at": created_at_str
+                "created_at": created_at.isoformat()
             }
             for i in range(len(chunks))
         ]
-        upsert_to_chromadb(
-            collection=collection,
+        collection.upsert(
             ids=ids,
             embeddings=embeddings,
             documents=chunks,
@@ -155,3 +154,60 @@ def run_ingest_pipeline(doc_id: int, file_path: Path, user_id: int, created_at:d
             connection.commit()
     finally:
         connection.close()
+
+def run_query_pipeline(query_text: str, doc_id: int | None = None):
+    print(f"DEBUG: doc_id received: {doc_id} (type: {type(doc_id)})")
+    embedding_model = "models/gemini-embedding-2-preview"
+    LLM_model = "gemini-2.0-flash"
+    try:
+        try:
+            embedded_query = client.models.embed_content(
+                model=embedding_model,
+                contents=query_text,
+                config=types.EmbedContentConfig(task_type="RETRIEVAL_QUERY")
+            )
+            if not embedded_query.embeddings or embedded_query.embeddings[0].values is None:
+                return "fail to vectorize"
+            query_vector = embedded_query.embeddings[0].values
+        except Exception as e:
+            print(e)
+
+        try:
+            results = collection.query(
+                query_embeddings=cast(Embeddings, [query_vector]),
+                n_results=2,
+                where={"doc_id": doc_id} if doc_id else None
+            )
+            print(f"DEBUG: ChromaDB results: {results}")
+        except Exception as e:
+            print(e)
+
+        if not results or results.get("documents") is None:
+            return "fail to get from chromadb"
+        documents = results.get("documents")
+        if not documents or not documents[0]:
+            return "fail to get documents"
+        context_text = "\n\n".join(documents[0])
+
+        instruction = "参考資料に基づき、ユーザーの質問に日本語で回答して。資料にない内容については「分かりません」と答えて。"
+        prompt = f"""# 参考資料:
+{context_text}
+
+# ユーザーの質問:
+{query_text}
+"""
+        try:
+            response = client.models.generate_content(
+                model=LLM_model,
+                config=types.GenerateContentConfig(
+                system_instruction=instruction
+                ),
+                contents=prompt
+            )
+            if not response.text:
+                return "fail to get answer from gemini"
+            return response.text
+        except Exception as e:
+            print(e)
+    except Exception as e:
+        print(e)
