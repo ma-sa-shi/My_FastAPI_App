@@ -6,13 +6,13 @@ from fastapi.security import OAuth2PasswordBearer
 from fastapi import Depends, HTTPException, status
 
 load_dotenv()
-SECRET_KEY: str =os.getenv("SECRET_KEY")
-ALGORITHM: str =os.getenv("ALGORITHM")
+SECRET_KEY: str =os.getenv("SECRET_KEY", "")
+ALGORITHM: str =os.getenv("ALGORITHM", "")
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
 # dataは{"user_id":, "is_admin":}
-def create_access_token(data: dict[str, int | bool], expires_delta: timedelta) -> str:
+def create_access_token(data: dict[str, int | bool | datetime], expires_delta: timedelta) -> str:
     to_encode = data.copy()
     expire = datetime.now(timezone.utc) + expires_delta
     to_encode.update({"exp": expire})
