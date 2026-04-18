@@ -10,7 +10,7 @@ import aiofiles
 from typing import cast
 from database import get_db_connection, init_db
 from auth import create_access_token, get_current_admin
-from rag import run_ingest_pipeline
+from rag import run_ingest_pipeline, run_query_pipeline
 
 
 app = FastAPI()
@@ -80,6 +80,28 @@ admin_router = APIRouter(
     tags=["admin"],
     dependencies=[Depends(get_current_admin)]
 )
+
+@app.post("/query", status_code=status.HTTP_200_OK)
+async def ask_question(query: str, doc_id: int | None =None):
+
+    if not query.strip():
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Query text cannot be empty"
+            )
+    try:
+        answer = run_query_pipeline(query, doc_id)
+        return {
+            "query": query,
+            "answer": answer,
+            "doc_id": doc_id
+        }
+    except Exception as e:
+        print(e)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="An unexpected error occurred during the RAG process."
+        )
 
 ALLOWED_EXTENSIONS: set[str] = {".pdf", ".txt", ".md"}
 UPLOAD_DIR: Path = Path("./storage/upload/")
