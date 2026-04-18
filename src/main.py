@@ -1,13 +1,17 @@
-from fastapi import FastAPI, HTTPException, status, UploadFile, File, Depends, APIRouter 
+from fastapi import FastAPI, HTTPException, status, UploadFile, File, Depends, APIRouter, BackgroundTasks
 from fastapi.security import OAuth2PasswordRequestForm
 from argon2 import PasswordHasher
 from argon2.exceptions import VerifyMismatchError
 from pydantic import BaseModel
+from pymysql.cursors import DictCursor
 from pathlib import Path
 from datetime import timedelta
+import aiofiles
 from typing import cast
 from database import get_db_connection, init_db
 from auth import create_access_token, get_current_admin
+from rag import run_ingest_pipeline
+
 
 app = FastAPI()
 init_db()
@@ -29,14 +33,12 @@ def post_register(user: User) -> dict[str, str | bool]:
     try:
         with connection.cursor() as cursor:
             # 登録済みか確認するSQL
-            check_sql: str = "SELECT username FROM users WHERE username = %s"
-            cursor.execute(check_sql, (user.username,))
+            cursor.execute("SELECT username FROM users WHERE username = %s", (user.username,))
             if cursor.fetchone():
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="username already exists")
-            
+
             hashed_pwd: str = ph.hash(user.password)
-            sql: str = "INSERT INTO users (username, is_admin, hashed_password) VALUES (%s, %s, %s)"
-            cursor.execute(sql, (user.username, user.is_admin, hashed_pwd))
+            cursor.execute("INSERT INTO users (username, is_admin, hashed_password) VALUES (%s, %s, %s)", (user.username, user.is_admin, hashed_pwd))
             connection.commit()
         return {"message": "register success", "username": user.username, "is_admin": user.is_admin}
     finally:
@@ -46,29 +48,28 @@ def post_register(user: User) -> dict[str, str | bool]:
 def post_login(form: OAuth2PasswordRequestForm = Depends()) -> dict[str, str | int | bool]:
     connection = get_db_connection()
     try:
-        with connection.cursor() as cursor:
-            sql: str = "SELECT user_id, is_admin, hashed_password FROM users WHERE username = %s"
-            cursor.execute(sql, (form.username,))
+        with connection.cursor(DictCursor) as cursor:
+            cursor.execute("SELECT user_id, is_admin, hashed_password FROM users WHERE username = %s", (form.username,))
             result: dict[str, int | bool | str] | None = cursor.fetchone()
 
             if not result:
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid userId or password")
-            
+
             # result["hashed_password"]がNoneのとき500 Internal Server Error
             hashed_password = cast(str, result["hashed_password"])
-            
+
             try:
                 ph.verify(hashed_password, form.password)
             except VerifyMismatchError:
                 raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid userId or password")
 
             token: str = create_access_token({"user_id": int(result["user_id"]), "is_admin": bool(result["is_admin"])}, timedelta(minutes=60))
-        
+
         return {
             "access_token": token,
-            "token_type": "bearer", 
-            "user_id": result['user_id'], 
-            "is_admin": bool(result["is_admin"]), 
+            "token_type": "bearer",
+            "user_id": result['user_id'],
+            "is_admin": bool(result["is_admin"]),
             "username": form.username
             }
     finally:
@@ -80,16 +81,17 @@ admin_router = APIRouter(
     dependencies=[Depends(get_current_admin)]
 )
 
-ALLOWED_EXTENSIONS: set[str] = {".pdf", ".docx", ".txt", ".md"}
+ALLOWED_EXTENSIONS: set[str] = {".pdf", ".txt", ".md"}
 UPLOAD_DIR: Path = Path("./storage/upload/")
 @admin_router.post("/upload/", status_code=status.HTTP_200_OK)
-async def upload_file(file: UploadFile = File(...), current_admin: dict[str, int | bool] = Depends(get_current_admin)):
+async def upload_file(file: UploadFile = File(...),
+                      current_admin: dict[str, int | bool] = Depends(get_current_admin)):
     if file.filename is None:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="file is not founded")
 
     # ディレクトリ作成
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
-    
+
     # 拡張子チェック
     ext: str = Path(file.filename).suffix.lower()
 
@@ -100,29 +102,50 @@ async def upload_file(file: UploadFile = File(...), current_admin: dict[str, int
         )
 
     file_path: Path = UPLOAD_DIR / file.filename
-    
+
     # ファイル保存
     try:
         contents: bytes = await file.read()
-        with open(file_path, "wb") as f:
-            f.write(contents)
+        async with aiofiles.open(file_path, "wb") as f:
+            await f.write(contents)
     except Exception as e:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                             detail=str(e))
     finally:
         await file.close()
-    
+
     # DBにメタデータ保存
     user_id: int = current_admin["user_id"]
     connection = get_db_connection()
     try:
         with connection.cursor() as cursor:
-            sql: str = "INSERT INTO docs (user_id, dir_path, filename) VALUES (%s, %s, %s)"
-            cursor.execute(sql, (user_id, str(UPLOAD_DIR), file.filename))
+            cursor.execute("INSERT INTO docs (user_id, dir_path, filename) VALUES (%s, %s, %s)", (user_id, str(UPLOAD_DIR), file.filename))
             connection.commit()
     finally:
         connection.close()
 
     return {"messege": "upload success", "fileName": file.filename}
+
+@admin_router.post("/documents/{doc_id}/ingest", status_code=status.HTTP_200_OK)
+async def ingest_document(
+    doc_id: int,
+    background_tasks: BackgroundTasks,
+):
+
+    connection = get_db_connection()
+    try:
+        with connection.cursor(DictCursor) as cursor:
+            cursor.execute("SELECT user_id, dir_path, filename, created_at FROM docs WHERE doc_id = %s", (doc_id,))
+            row = cursor.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="Document is not found")
+
+            file_path = Path(row["dir_path"]) / row["filename"]
+            cursor.execute("UPDATE docs SET status = 'processing' WHERE doc_id = %s", (doc_id,))
+    finally:
+        connection.close()
+
+    background_tasks.add_task(run_ingest_pipeline, doc_id, file_path, row["user_id"], row["created_at"])
+    return {"messege": "Ingestion started", "doc_id": doc_id}
 
 app.include_router(admin_router)

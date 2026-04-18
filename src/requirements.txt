@@ -1,10 +1,15 @@
 fastapi
-uvicorn[standard] # webサーバー
-google-genai==1.72.0 
-chromadb #ChromaDBと通信しベクトルデータの保存や検索を行う
-pymysql #MySQLドライバー
-cryptography # 暗号化
-argon2-cffi
+uvicorn[standard]
 python-multipart
 python-dotenv
+pymysql
+chromadb
+aiofiles
+google-genai==1.72.0
+argon2-cffi
 python-jose[cryptography]
+cryptography
+pymupdf
+types-aiofiles
+types-python-jose
+types-PyMySQL
