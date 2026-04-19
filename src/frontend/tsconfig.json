@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "target": "ESNext",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "strict": true, // 型チェック有効
+    "skipLibCheck": true, // ライブラリの型チェックをスキップ
+    "isolatedModules": true,
+    "noEmit": true, //型チェックのみで、Viteがコンパイルするため、出力は行わない
+    "verbatimModuleSyntax": true,
+    "allowImportingTsExtensions": true,
+    "noUncheckedIndexedAccess": true
+    },
+  "include": ["src"]
+}
