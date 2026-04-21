@@ -1,43 +1,38 @@
-// For format details, see https://aka.ms/devcontainer.json. For config options, see the
-// README at: https://github.com/devcontainers/templates/tree/main/src/docker-existing-docker-compose
 {
 	"name": "Existing Docker Compose (Extend)",
 
-	// Update the 'dockerComposeFile' list if you have more compose files or use different names.
-	// The .devcontainer/docker-compose.yml file contains any overrides you need/want to make.
 	"dockerComposeFile": [
-		"../docker-compose.yaml",
+		"../docker-compose.yml",
 		"docker-compose.yml"
 	],
 
-	// The 'service' property is the name of the service for the container that VS Code should
-	// use. Update this value and .devcontainer/docker-compose.yml to the real service name.
 	"service": "backend",
 
-	// The optional 'workspaceFolder' property is the path VS Code should open by default when
-	// connected. This is typically a file mount in .devcontainer/docker-compose.yml
 	"workspaceFolder": "/workspace",
 
-	// Features to add to the dev container. More info: https://containers.dev/features.
+	// nodeのインストール
 	"features": {
 		"ghcr.io/devcontainers/features/node:1": {
 			"version": "24"
 		}
 	},
 
-	// Use 'forwardPorts' to make a list of ports inside the container available locally.
 	"forwardPorts": [8000, 3000],
 
-	// Uncomment the next line if you want start specific services in your Docker Compose config.
+	// backendとfrontend両方のコンテナを起動する
 	"runServices": ["backend", "frontend"],
 
-	// Uncomment the next line if you want to keep your containers running after VS Code shuts down.
+	// コンテナ停止時にdocker-compose down実行する
 	"shutdownAction": "stopCompose",
 
-	// Uncomment the next line to run commands after the container is created.
+	// tsのインストールが完了してからエディタを起動する
 	"postCreateCommand": "npm install -g typescript",
+	"waitFor": "postCreateCommand",
 
-	// Configure tool-specific properties.
+	// vscodeがコンテナに接続する度に実行する
+	"postAttachCommand":"uvicorn main:app --app-dir src/backend --host 0.0.0.0 --port 8000 --reload",
+
+	// 拡張機能のインストール
 	"customizations": {
 		"vscode": {
 			"extensions": [
@@ -51,8 +46,7 @@
 				"yoavbls.pretty-ts-errors"
 			]
 		}
-	}
+	},
 
-	// Uncomment to connect as an existing user other than the container default. More info: https://aka.ms/dev-containers-non-root.
-	// "remoteUser": "root"
+	"remoteUser": "root"
 }

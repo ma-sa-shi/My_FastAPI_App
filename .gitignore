@@ -1,9 +1,11 @@
 .env
-__pycache__/
+**/__pycache__/
+**/chroma_db/
+**/.mypy_cache/
 src/storage/upload/*
 !src/storage/upload/.gitkeep
 src/backend/debug_response.json
 src/backend/temp.py
-src/chroma_db/
+src/.mypy_cache/
 src/frontend/node_modules/
 diff.txt
