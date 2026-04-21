@@ -1,4 +1,4 @@
-export class RegisterView extends HTMLElement {
+export class LoginView extends HTMLElement {
   connectedCallback() {
     this.render();
   }
@@ -10,40 +10,39 @@ export class RegisterView extends HTMLElement {
     section.style.gap = '10px';
     section.style.width = '300px';
     const title = document.createElement('h2');
-    title.textContent = 'ユーザー登録';
+    title.textContent = 'ログイン';
 
     const usernameInput = document.createElement('input');
     const passwordInput = document.createElement('input');
-    const registerButton = document.createElement('button');
+    const loginButton = document.createElement('button');
 
     usernameInput.placeholder = 'Username';
     passwordInput.placeholder = 'Password';
     passwordInput.type = 'password';
-    registerButton.textContent = '登録';
+    loginButton.textContent = 'ログイン';
 
-    registerButton.addEventListener('click', async () => {
+    loginButton.addEventListener('click', async () => {
       const username = usernameInput.value;
       const password = passwordInput.value;
 
       try {
-        const response = await fetch('/api/register', {
+        const response = await fetch('/api/login', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ username, password })
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: new URLSearchParams({ username, password }).toString()
         });
 
         if (response.ok) {
-          alert('登録成功');
-          window.location.href = '/login';
+          alert('ログイン成功');
         } else {
-          alert('登録失敗');
+          alert('ログイン失敗');
         }
       } catch (e) {
         console.error(e);
       }
     });
-    section.append(title, usernameInput, passwordInput, registerButton);
+    section.append(title, usernameInput, passwordInput, loginButton);
     this.replaceChildren(section);
   }
 }
-customElements.define('register-view', RegisterView);
+customElements.define('login-view', LoginView);

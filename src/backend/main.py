@@ -12,8 +12,14 @@ from database import get_db_connection, init_db
 from auth import create_access_token, get_current_admin
 from rag import run_ingest_pipeline, run_query_pipeline
 
-
 app = FastAPI()
+router = APIRouter()
+admin_router = APIRouter(
+    prefix="/admin",
+    tags=["admin"],
+    dependencies=[Depends(get_current_admin)]
+)
+
 init_db()
 # bcryptはバイト数制約があるためargon2採用
 ph = PasswordHasher()
@@ -22,11 +28,11 @@ class User(BaseModel):
     username: str
     password: str
 
-@app.get("/api/")
+@router.get("/")
 def read_root() -> dict[str, str]:
-    return {"message": "Hello Retrieval-Augmented Generation App"}
+    return {"message": "Hello Retrieval-Augmented Generation router"}
 
-@app.post("/api/register", status_code=status.HTTP_201_CREATED)
+@router.post("/register", status_code=status.HTTP_201_CREATED)
 def post_register(user: User) -> dict[str, str | bool]:
     connection = get_db_connection()
     try:
@@ -43,7 +49,7 @@ def post_register(user: User) -> dict[str, str | bool]:
     finally:
         connection.close()
 
-@app.post("/api/login", status_code=status.HTTP_200_OK)
+@router.post("/login", status_code=status.HTTP_200_OK)
 def post_login(form: OAuth2PasswordRequestForm = Depends()) -> dict[str, str | int | bool]:
     connection = get_db_connection()
     try:
@@ -74,13 +80,7 @@ def post_login(form: OAuth2PasswordRequestForm = Depends()) -> dict[str, str | i
     finally:
         connection.close()
 
-admin_router = APIRouter(
-    prefix="/admin",
-    tags=["admin"],
-    dependencies=[Depends(get_current_admin)]
-)
-
-@app.post("/api/query", status_code=status.HTTP_200_OK)
+@router.post("/query", status_code=status.HTTP_200_OK)
 async def ask_question(query: str, doc_id: int | None =None):
 
     if not query.strip():
@@ -147,7 +147,7 @@ async def upload_file(file: UploadFile = File(...),
 
     return {"messege": "upload success", "fileName": file.filename}
 
-@admin_router.post("/api/documents/{doc_id}/ingest", status_code=status.HTTP_200_OK)
+@admin_router.post("/documents/{doc_id}/ingest", status_code=status.HTTP_200_OK)
 async def ingest_document(
     doc_id: int,
     background_tasks: BackgroundTasks,
@@ -169,4 +169,6 @@ async def ingest_document(
     background_tasks.add_task(run_ingest_pipeline, doc_id, file_path, row["user_id"], row["created_at"])
     return {"messege": "Ingestion started", "doc_id": doc_id}
 
-app.include_router(admin_router)
+
+app.include_router(admin_router, prefix="/api")
+app.include_router(router, prefix="/api")
