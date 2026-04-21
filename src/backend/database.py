@@ -4,6 +4,7 @@ import time
 from dotenv import load_dotenv
 from pymysql.connections import Connection
 from pymysql.cursors import DictCursor
+from pathlib import Path
 
 load_dotenv()
 
@@ -20,7 +21,8 @@ def get_db_connection() -> Connection:
     )
 
 def init_db() -> None:
-    with open("init.sql", "r") as f:
+    SQL_PATH = Path(__file__).resolve().parent.parent / "init.sql"
+    with open(SQL_PATH, "r") as f:
         sql: str = f.read()
 
     connection: Connection | None = None

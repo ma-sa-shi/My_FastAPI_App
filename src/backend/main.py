@@ -20,14 +20,13 @@ ph = PasswordHasher()
 
 class User(BaseModel):
     username: str
-    is_admin: bool
     password: str
 
-@app.get("/")
+@app.get("/api/")
 def read_root() -> dict[str, str]:
     return {"message": "Hello Retrieval-Augmented Generation App"}
 
-@app.post("/register", status_code=status.HTTP_201_CREATED)
+@app.post("/api/register", status_code=status.HTTP_201_CREATED)
 def post_register(user: User) -> dict[str, str | bool]:
     connection = get_db_connection()
     try:
@@ -38,13 +37,13 @@ def post_register(user: User) -> dict[str, str | bool]:
                 raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="username already exists")
 
             hashed_pwd: str = ph.hash(user.password)
-            cursor.execute("INSERT INTO users (username, is_admin, hashed_password) VALUES (%s, %s, %s)", (user.username, user.is_admin, hashed_pwd))
+            cursor.execute("INSERT INTO users (username, hashed_password) VALUES (%s, %s)", (user.username, hashed_pwd))
             connection.commit()
-        return {"message": "register success", "username": user.username, "is_admin": user.is_admin}
+        return {"message": "register success", "username": user.username}
     finally:
         connection.close()
 
-@app.post("/login", status_code=status.HTTP_200_OK)
+@app.post("/api/login", status_code=status.HTTP_200_OK)
 def post_login(form: OAuth2PasswordRequestForm = Depends()) -> dict[str, str | int | bool]:
     connection = get_db_connection()
     try:
@@ -81,7 +80,7 @@ admin_router = APIRouter(
     dependencies=[Depends(get_current_admin)]
 )
 
-@app.post("/query", status_code=status.HTTP_200_OK)
+@app.post("/api/query", status_code=status.HTTP_200_OK)
 async def ask_question(query: str, doc_id: int | None =None):
 
     if not query.strip():
@@ -148,7 +147,7 @@ async def upload_file(file: UploadFile = File(...),
 
     return {"messege": "upload success", "fileName": file.filename}
 
-@admin_router.post("/documents/{doc_id}/ingest", status_code=status.HTTP_200_OK)
+@admin_router.post("/api/documents/{doc_id}/ingest", status_code=status.HTTP_200_OK)
 async def ingest_document(
     doc_id: int,
     background_tasks: BackgroundTasks,
