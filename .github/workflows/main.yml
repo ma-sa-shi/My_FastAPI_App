@@ -1,0 +1,53 @@
+name: Continuous Integration
+
+on:
+  push:
+    branches: ['feature/**', 'fix/**', 'ci/**']
+    paths: ['src/backend/**', '.github/workflows/main.yml']
+  pull_request:
+    branches: ['main']
+
+jobs:
+  backend-ci:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/backend
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+          cache: 'poetry'
+
+      - name: Install Poetry
+        run: pip install poetry
+
+      - name: Install Dependencies
+        run: poetry install --no-interaction
+
+      - name: Run Pytest
+        env:
+          PYTHONPATH: .
+        run: poetry run pytest -v tests/test_main.py
+
+  frontend-ci:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/frontend
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run Build Check (Vite)
+        run: npm run build

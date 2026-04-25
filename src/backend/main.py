@@ -107,8 +107,9 @@ UPLOAD_DIR: Path = Path("./storage/upload/")
 @admin_router.post("/upload/", status_code=status.HTTP_200_OK)
 async def upload_file(file: UploadFile = File(...),
                       current_admin: dict[str, int | bool] = Depends(get_current_admin)):
-    if file.filename is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="file is not founded")
+    # filenameが空の場合、FastAPIが422エラーを返すので不要
+    # if file.filename is None:
+    #     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="file is not founded")
 
     # ディレクトリ作成
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)

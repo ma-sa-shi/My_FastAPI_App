@@ -26,21 +26,20 @@
 	"shutdownAction": "stopCompose",
 
 	// tsのインストールが完了してからエディタを起動する
-	"postCreateCommand": "npm install -g typescript",
+	"postCreateCommand": "pip install poetry && npm install -g typescript",
 	"waitFor": "postCreateCommand",
 
 	// vscodeがコンテナに接続する度に実行する
-	"postAttachCommand":"uvicorn main:app --app-dir src/backend --host 0.0.0.0 --port 8000 --reload",
+	// "postAttachCommand":"uvicorn main:app --app-dir src/backend --host 0.0.0.0 --port 8000 --reload",
 
 	// 拡張機能のインストール
 	"customizations": {
 		"vscode": {
 			"extensions": [
 				"ms-python.python",
-				"ms-python.vscode-pylint",
+				"charliermarsh.ruff",
 				"ms-python.mypy-type-checker",
 				"ms-python.debugpy",
-				"njpwerner.autodocstring",
 				"dbaeumer.vscode-eslint",
 				"esbenp.prettier-vscode",
 				"yoavbls.pretty-ts-errors"
