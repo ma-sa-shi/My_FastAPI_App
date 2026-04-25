@@ -6,21 +6,30 @@ from pydantic import BaseModel
 from pymysql.cursors import DictCursor
 from pathlib import Path
 from datetime import timedelta
+from contextlib import asynccontextmanager
 import aiofiles
 from typing import cast
 from database import get_db_connection, init_db
 from auth import create_access_token, get_current_admin
 from rag import run_ingest_pipeline, run_query_pipeline
 
-app = FastAPI()
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # This runs when the app starts
+    try:
+        init_db()
+    except Exception as e:
+        print(e)
+    yield
+
+app = FastAPI(lifespan=lifespan)
 router = APIRouter()
 admin_router = APIRouter(
     prefix="/admin",
     tags=["admin"],
     dependencies=[Depends(get_current_admin)]
 )
-
-init_db()
 # bcryptはバイト数制約があるためargon2採用
 ph = PasswordHasher()
 
@@ -30,7 +39,7 @@ class User(BaseModel):
 
 @router.get("/")
 def read_root() -> dict[str, str]:
-    return {"message": "Hello Retrieval-Augmented Generation router"}
+    return {"message": "Hello Retrieval-Augmented Generation App"}
 
 @router.post("/register", status_code=status.HTTP_201_CREATED)
 def post_register(user: User) -> dict[str, str | bool]:
@@ -107,8 +116,9 @@ UPLOAD_DIR: Path = Path("./storage/upload/")
 @admin_router.post("/upload/", status_code=status.HTTP_200_OK)
 async def upload_file(file: UploadFile = File(...),
                       current_admin: dict[str, int | bool] = Depends(get_current_admin)):
-    if file.filename is None:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="file is not founded")
+    # filenameが空の場合、FastAPIが422エラーを返すので不要
+    # if file.filename is None:
+    #     raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="file is not founded")
 
     # ディレクトリ作成
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
@@ -145,7 +155,7 @@ async def upload_file(file: UploadFile = File(...),
     finally:
         connection.close()
 
-    return {"messege": "upload success", "fileName": file.filename}
+    return {"message": "upload success", "fileName": file.filename}
 
 @admin_router.post("/documents/{doc_id}/ingest", status_code=status.HTTP_200_OK)
 async def ingest_document(
@@ -167,7 +177,7 @@ async def ingest_document(
         connection.close()
 
     background_tasks.add_task(run_ingest_pipeline, doc_id, file_path, row["user_id"], row["created_at"])
-    return {"messege": "Ingestion started", "doc_id": doc_id}
+    return {"message": "Ingestion started", "doc_id": doc_id}
 
 
 app.include_router(admin_router, prefix="/api")
