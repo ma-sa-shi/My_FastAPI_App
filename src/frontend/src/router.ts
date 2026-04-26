@@ -2,6 +2,10 @@ const routes: Record<string, () => Promise<void>> = {
   '/register': async () => {
     await import('./register');
     document.getElementById('app')!.innerHTML = '<register-view></register-view>';
+  },
+  '/login': async () => {
+    await import('./login');
+    document.getElementById('app')!.innerHTML = '<login-view></login-view>';
   }
 };
 
