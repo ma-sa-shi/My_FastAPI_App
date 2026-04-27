@@ -1,11 +1,12 @@
 name: Continuous Integration
 
 on:
-  push:
-    branches: ['feature/**', 'fix/**', 'ci/**']
-    paths: ['src/backend/**', '.github/workflows/main.yml']
-  pull_request:
+ pull_request:
     branches: ['main']
+    paths:
+      - 'src/backend/**'
+      - 'src/frontend/**'
+      - '.github/workflows/main.yml'
 
 jobs:
   backend-ci:

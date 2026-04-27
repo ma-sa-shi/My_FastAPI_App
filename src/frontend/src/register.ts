@@ -5,10 +5,10 @@ export class RegisterView extends HTMLElement {
 
   render() {
     const section = document.createElement('section');
-    section.style.display = 'flex';
-    section.style.flexDirection = 'column';
-    section.style.gap = '10px';
-    section.style.width = '300px';
+    Object.assign(section.style, {
+      display: 'flex', flexDirection: 'column', gap: '10px', width: '300px'
+    });
+
     const title = document.createElement('h2');
     title.textContent = 'ユーザー登録';
 

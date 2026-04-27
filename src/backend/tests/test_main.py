@@ -1,8 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
 from pytest_mock import MockerFixture
-from datetime import timedelta
-import json
 from pathlib import Path
 from main import app, User
 from auth import get_current_admin
@@ -88,11 +86,8 @@ class TestLoginEndpoint:
 
         response = client.post("/api/login", data={"username": "testuser", "password": "testpassword"})
         assert response.status_code == 200
-        assert response.json()["access_token"] == "test_token"
-        assert response.json()["token_type"] == "bearer"
-        assert response.json()["user_id"] == 1
-        assert response.json()["is_admin"] is True
-        assert response.json()["username"] == "testuser"
+        assert response.json() == {"message": "login success"}
+        assert response.cookies.get("access_token") == "test_token"
 
     # 異常系:usernameがDBに無い場合のテスト
     def test_login_user_not_found(self, mocker: MockerFixture):
