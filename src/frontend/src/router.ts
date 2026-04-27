@@ -6,6 +6,10 @@ const routes: Record<string, () => Promise<void>> = {
   '/login': async () => {
     await import('./login');
     document.getElementById('app')!.innerHTML = '<login-view></login-view>';
+  },
+  '/upload': async () => {
+    await import('./upload');
+    document.getElementById('app')!.innerHTML = '<upload-view></upload-view>';
   }
 };
 
