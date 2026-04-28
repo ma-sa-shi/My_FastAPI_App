@@ -236,7 +236,8 @@ class TestAdminIngestEndpoint:
             "user_id": 1,
             "dir_path": "./storage/upload/",
             "filename": "test.txt",
-            "created_at": "2026-01-01"
+            "status": "uploaded", # Add the missing 'status' key
+            "created_at": "2026-01-01",
         }
         mock_pipeline = mocker.patch('main.run_ingest_pipeline')
         try:
@@ -288,7 +289,6 @@ class TestUserModel:
         user_data = {"username": "testuser", "password": "testpassword"}
         user = User(**user_data)
         assert user.model_dump() == user_data
-
 
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

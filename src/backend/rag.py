@@ -11,14 +11,15 @@ import pymupdf
 from pathlib import Path
 from database import get_db_connection
 from datetime import datetime
-from typing import cast
 # import pprint
 # import json
 
 load_dotenv()
 client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
 
-chroma_client = chromadb.PersistentClient(path="./chroma_db")
+# 実行ディレクトリに依存しないよう、プロジェクトルートを基準にする
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+chroma_client = chromadb.PersistentClient(path=str(PROJECT_ROOT / "chroma_db"))
 collection: Collection = chroma_client.get_or_create_collection(name="rag_app")
 
 # 再帰的文字分割へ後にアップグレードする
@@ -145,7 +146,7 @@ def run_ingest_pipeline(doc_id: int, file_path: Path, user_id: int, created_at:d
         )
 
         with connection.cursor() as cursor:
-            cursor.execute("UPDATE docs SET status = 'completed' WHERE doc_id = %s", (doc_id,))
+            cursor.execute("UPDATE docs SET status = 'ingested' WHERE doc_id = %s", (doc_id,))
             connection.commit()
     except Exception as e:
         print(e)

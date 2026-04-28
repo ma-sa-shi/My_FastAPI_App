@@ -10,7 +10,11 @@ const routes: Record<string, () => Promise<void>> = {
   '/upload': async () => {
     await import('./upload');
     document.getElementById('app')!.innerHTML = '<upload-view></upload-view>';
-  }
+  },
+  '/ingest': async () => {
+    await import('./ingest');
+    document.getElementById('app')!.innerHTML = '<ingest-view></ingest-view>';
+  },
 };
 
 export const handleNavigation = async () => {
