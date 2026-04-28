@@ -2,8 +2,8 @@
 **/__pycache__/
 **/chroma_db/
 **/.mypy_cache/
-src/storage/upload/*
-!src/storage/upload/.gitkeep
+storage/upload/*
+!storage/upload/.gitkeep
 src/backend/debug_response.json
 src/backend/temp.py
 src/.mypy_cache/

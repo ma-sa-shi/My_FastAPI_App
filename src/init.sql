@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS docs (
     user_id INT NOT NULL,
     dir_path VARCHAR(255),
     filename VARCHAR(100) NOT NULL,
-    status ENUM("uploaded", "processing", "completed", "failed") DEFAULT "uploaded",
+    status ENUM("uploaded", "processing", "ingested", "failed") DEFAULT "uploaded",
     extracted_text TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     delete_flg BOOLEAN DEFAULT FALSE,

@@ -137,7 +137,9 @@ async def ask_question(query: str, doc_id: int | None =None):
         )
 
 ALLOWED_EXTENSIONS: set[str] = {".pdf", ".txt", ".md"}
-UPLOAD_DIR: Path = Path("./storage/upload/")
+PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+UPLOAD_DIR: Path = PROJECT_ROOT / "storage" / "upload"
+
 @admin_router.post("/upload/", status_code=status.HTTP_200_OK)
 async def upload_file(file: UploadFile = File(...),
                       current_admin: dict[str, int | bool] = Depends(get_current_admin)):
@@ -182,19 +184,33 @@ async def upload_file(file: UploadFile = File(...),
 
     return {"message": "upload success", "fileName": file.filename}
 
+@admin_router.get("/documents", status_code=status.HTTP_200_OK)
+async def get_documents():
+    connection = get_db_connection()
+    try:
+        with connection.cursor(DictCursor) as cursor:
+            cursor.execute("SELECT doc_id, filename, status, created_at FROM docs WHERE delete_flg = FALSE")
+            rows = cursor.fetchall()
+            return rows
+    finally:
+        connection.close()
+
 @admin_router.post("/documents/{doc_id}/ingest", status_code=status.HTTP_200_OK)
 async def ingest_document(
     doc_id: int,
     background_tasks: BackgroundTasks,
-):
+) -> dict[str, str | int]:
 
     connection = get_db_connection()
     try:
         with connection.cursor(DictCursor) as cursor:
-            cursor.execute("SELECT user_id, dir_path, filename, created_at FROM docs WHERE doc_id = %s", (doc_id,))
+            cursor.execute("SELECT user_id, dir_path, filename, status, created_at FROM docs WHERE doc_id = %s", (doc_id,))
             row = cursor.fetchone()
             if not row:
                 raise HTTPException(status_code=404, detail="Document is not found")
+
+            if row["status"] in ["processing", "injested"]:
+                return {"message": f"Document {doc_id} is already {row['status']}", "doc_id": doc_id}
 
             file_path = Path(row["dir_path"]) / row["filename"]
             cursor.execute("UPDATE docs SET status = 'processing' WHERE doc_id = %s", (doc_id,))
