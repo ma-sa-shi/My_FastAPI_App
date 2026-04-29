@@ -2,6 +2,7 @@
 **/__pycache__/
 **/chroma_db/
 **/.mypy_cache/
+**/.pytest_cache/
 storage/upload/*
 !storage/upload/.gitkeep
 src/backend/debug_response.json
