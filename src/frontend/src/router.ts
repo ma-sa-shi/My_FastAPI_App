@@ -15,6 +15,10 @@ const routes: Record<string, () => Promise<void>> = {
     await import('./ingest');
     document.getElementById('app')!.innerHTML = '<ingest-view></ingest-view>';
   },
+  '/query': async () => {
+    await import('./query');
+    document.getElementById('app')!.innerHTML = '<query-view></query-view>';
+  },
 };
 
 export const handleNavigation = async () => {

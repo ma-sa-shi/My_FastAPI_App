@@ -19,11 +19,11 @@ export class IngestView extends HTMLElement {
       const response = await fetch('/api/admin/documents', {
         credentials: 'same-origin',
       });
-      if (response.ok) {
-        this.documents = await response.json();
-      } else {
+      if (!response.ok) {
         console.error('ドキュメント一覧の取得に失敗しました');
+        return;
       }
+      this.documents = await response.json();
     } catch (e) {
       console.error(e);
     } finally {
@@ -56,9 +56,13 @@ export class IngestView extends HTMLElement {
           method: 'POST',
           credentials: 'same-origin',
         });
+        if (!response.ok) {
+          this.logs.push(`${doc?.filename}: サーバーエラーが発生しました`);
+          continue;
+        }
         const result = await response.json();
         // オプショナルチェイニングによりdocが見つからない場合でもエラー回避
-        this.logs.push(`${doc?.filename}: ${result.message}`);
+        this.logs.push(`${doc?.filename}: 取込み処理を開始しました `);
       } catch (e) {
         this.logs.push(`${doc?.filename}: 通信エラーが発生しました`);
       }
@@ -86,15 +90,14 @@ export class IngestView extends HTMLElement {
     table.style.borderCollapse = 'collapse';
     table.style.width = '100%';
 
-    // ヘッダー作成
     const thead = document.createElement('thead');
     const headerRow = document.createElement('tr');
-    headerRow.style.backgroundColor = '#f2f2f2';
+    headerRow.style.backgroundColor = 'white';
     ['選択', 'ID', 'ファイル名', 'ステータス'].forEach((text) => {
       const th = document.createElement('th');
       th.textContent = text;
       Object.assign(th.style, {
-        border: '1px solid #ddd',
+        border: '1px solid white',
         padding: '8px',
         textAlign: 'left',
       });
@@ -103,7 +106,6 @@ export class IngestView extends HTMLElement {
     thead.appendChild(headerRow);
     table.appendChild(thead);
 
-    // データ行作成
     const tbody = document.createElement('tbody');
     this.documents.forEach((doc) => {
       const tr = document.createElement('tr');
@@ -144,7 +146,6 @@ export class IngestView extends HTMLElement {
 
     const logArea = document.createElement('div');
     Object.assign(logArea.style, {
-      fontSize: '0.9rem',
       marginTop: '10px',
     });
     this.logs.forEach((msg) => {
