@@ -1,4 +1,8 @@
+import { apiRequest } from './apiUtils';
+
 export class UploadView extends HTMLElement {
+  private isLoading = false;
+
   connectedCallback() {
     this.render();
   }

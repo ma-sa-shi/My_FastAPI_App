@@ -1,3 +1,6 @@
+import { apiRequest } from './apiUtils';
+import "./styles/register.css";
+
 export class RegisterView extends HTMLElement {
   connectedCallback() {
     this.render();
@@ -5,16 +8,18 @@ export class RegisterView extends HTMLElement {
 
   render() {
     const section = document.createElement('section');
-    Object.assign(section.style, {
-      display: 'flex', flexDirection: 'column', gap: '10px', width: '300px'
-    });
+    section.className = 'register-container';
 
     const title = document.createElement('h2');
+    title.className = 'register-title';
     title.textContent = 'ユーザー登録';
 
     const usernameInput = document.createElement('input');
+    usernameInput.className = 'register-input';
     const passwordInput = document.createElement('input');
+    passwordInput.className = 'register-input';
     const registerButton = document.createElement('button');
+    registerButton.className = 'register-button';
 
     usernameInput.placeholder = 'Username';
     passwordInput.placeholder = 'Password';
@@ -26,20 +31,14 @@ export class RegisterView extends HTMLElement {
       const password = passwordInput.value;
 
       try {
-        const response = await fetch('/api/register', {
+        await apiRequest('/api/register', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ username, password })
         });
-
-        if (response.ok) {
-          alert('登録成功');
-          window.location.href = '/login';
-        } else {
-          alert('登録失敗');
-        }
-      } catch (e) {
-        console.error(e);
+        alert('登録成功');
+        window.location.href = '/login';
+      } catch (error) {
+        alert(error instanceof Error ? error.message : '登録に失敗しました');
       }
     });
     section.append(title, usernameInput, passwordInput, registerButton);

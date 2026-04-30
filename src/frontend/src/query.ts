@@ -1,41 +1,37 @@
-interface DocumentData {
-  doc_id: number;
-  filename: string;
-  status: 'uploaded' | 'processing' | 'ingested' | 'failed';
-  created_at: string;
-}
+/**
+ * クエリ実行コンポーネント
+ * ユーザー入力をバックエンドに送信し、RAGによる回答を表示・管理します。
+ */
+
+import type { DocumentData } from './types';
+import { apiRequest } from './apiUtils';
+import './styles/query.css';
 
 export class QueryView extends HTMLElement {
   private documents: DocumentData[] = [];
   private queryResult: string = '';
   private isLoading: boolean = false;
 
-  connectedCallback() {
-    this.fetchIngestedDocuments();
+  async connectedCallback() {
+    await this.fetchIngestedDocuments();
   }
 
   async fetchIngestedDocuments() {
     try {
-      const response = await fetch('/api/admin/documents', {
+      const allDocs = await apiRequest<DocumentData[]>('/api/admin/documents', {
         credentials: 'same-origin',
       });
-      if (!response.ok) {
-        console.error('ドキュメント一覧の取得に失敗しました');
-        return;
-      }
-        const allDocs: DocumentData[] = await response.json();
-        this.documents = allDocs.filter((doc) => doc.status === 'ingested');
-    } catch (e) {
-      console.error(e);
+      this.documents = allDocs.filter((doc) => doc.status === 'ingested');
+    } catch (error) {
+      console.error('[Fetch Documents Failed]:', error);
     } finally {
+      // 成功・失敗に関わらず再描画してリストの状態を反映
       this.render();
     }
   }
 
   async handleQuerySubmit() {
-    const queryInput = this.querySelector(
-      '#query-input',
-    ) as HTMLTextAreaElement;
+    const queryInput = this.querySelector('#query-input') as HTMLTextAreaElement;
     const query = queryInput.value.trim();
 
     if (!query) {
@@ -43,38 +39,28 @@ export class QueryView extends HTMLElement {
       return;
     }
 
-    const checkboxes = this.querySelectorAll(
-      '.doc-checkbox:checked',
-    ) as NodeListOf<HTMLInputElement>;
+    const checkboxes = this.querySelectorAll('.doc-checkbox:checked') as NodeListOf<HTMLInputElement>;
     const selectedDocIds = Array.from(checkboxes).map((cb) =>
       parseInt(cb.value),
     );
 
     this.isLoading = true;
-    this.queryResult = '';
+    this.queryResult = '回答を生成中';
     this.render();
 
     try {
-      const response = await fetch('/api/query', {
+      const result = await apiRequest<{ answer: string }>('/api/query', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'same-origin',
         body: JSON.stringify({
           query: query,
           document_ids: selectedDocIds.length > 0 ? selectedDocIds : undefined,
         }),
       });
 
-      if (!response.ok) {
-        this.queryResult = 'サーバーエラーが発生しました';
-        return
-      }
-
-      const result = await response.json();
       this.queryResult = result.answer || '回答がありません。';
-    } catch (e) {
-      console.error(e);
-      this.queryResult = '通信エラーが発生しました。';
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '通信エラーが発生しました';
+      this.queryResult = `エラー: ${message}`;
     } finally {
       this.isLoading = false;
       this.render();
@@ -83,42 +69,35 @@ export class QueryView extends HTMLElement {
 
   private createNoDocsMessage(): HTMLElement {
     const p = document.createElement('p');
-    p.textContent = '現在、取り込み済みのドキュメントはありません。';
+    p.textContent = '現在、取込み済のドキュメントはありません。';
     Object.assign(p.style, { color: 'black', textAlign: 'center' });
     return p;
   }
 
   private createDocListSection(): HTMLElement {
     const container = document.createElement('div');
-
     const title = document.createElement('h3');
     title.textContent = '質問対象ドキュメント (任意)';
     title.style.marginBottom = '5px';
 
     const list = document.createElement('div');
-    Object.assign(list.style, {
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '5px',
-      border: '1px solid',
-      padding: '10px',
-      maxHeight: '200px',
-      overflowY: 'auto',
-    });
+    list.className = 'doc-list-container';
 
     this.documents.forEach((doc) => {
       const label = document.createElement('label');
-      Object.assign(label.style, {
-        display: 'flex',
-        alignItems: 'center',
-        gap: '5px',
-        cursor: this.isLoading ? 'not-allowed' : 'pointer',
-      });
+      label.className = 'doc-label';
+      label.classList.toggle('is-loading', this.isLoading);
 
-      label.innerHTML = `
-      <input type='checkbox' class='doc-checkbox' value='${doc.doc_id}' ${this.isLoading ? 'disabled' : ''}>
-      ${doc.filename} (ID: ${doc.doc_id})
-    `;
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.className = 'doc-checkbox';
+      checkbox.value = doc.doc_id.toString();
+      checkbox.disabled = this.isLoading;
+
+      const docName = document.createElement('span');
+      docName.textContent = doc.filename;
+
+      label.append(checkbox, docName);
       list.appendChild(label);
     });
 
@@ -126,31 +105,20 @@ export class QueryView extends HTMLElement {
     return container;
   }
 
+  /**
+   * メイン描画処理
+   */
   render() {
     const section = document.createElement('section');
-    Object.assign(section.style, {
-      display: 'flex',
-      flexDirection: 'column',
-      gap: '15px',
-      padding: '20px',
-      maxWidth: '800px',
-    });
+    section.className = 'query-container';
 
     const title = document.createElement('h2');
     title.textContent = 'RAGアプリへの質問';
 
-    const queryLabel = document.createElement('label');
-    queryLabel.textContent = '質問内容:';
     const queryInput = document.createElement('textarea');
     queryInput.id = 'query-input';
-    queryInput.placeholder = '質問を入力してください...';
-    Object.assign(queryInput.style, {
-      width: '100%',
-      minHeight: '100px',
-      padding: '8px',
-      border: '1px solid',
-      resize: 'vertical',
-    });
+    queryInput.placeholder = '質問を入力してください';
+    queryInput.className = 'query-textarea';
     queryInput.disabled = this.isLoading;
 
     const docSelectionSection = this.documents.length > 0
@@ -159,24 +127,15 @@ export class QueryView extends HTMLElement {
 
     // 送信ボタン
     const submitButton = document.createElement('button');
-    submitButton.textContent = this.isLoading ? '処理中...' : '質問を送信';
-    Object.assign(submitButton.style, {
-      padding: '10px 15px', // 文字周りのスペース
-      cursor: this.isLoading ? 'not-allowed' : 'pointer', // クリック可能かどうか
-    });
+    submitButton.textContent = this.isLoading ? '処理中' : '質問を送信';
+    submitButton.className = 'submit-button';
     submitButton.disabled = this.isLoading;
     submitButton.addEventListener('click', () => this.handleQuerySubmit());
 
     // 回答表示エリア
     const resultArea = document.createElement('div');
-    Object.assign(resultArea.style, {
-      marginTop: '20px', // 上要素とのスペース
-      padding: '5px', // 枠線と中身の間の余白
-      border: '1px solid',
-      minHeight: '100px', // 中身がない場合の最小の高さ
-      whiteSpace: 'pre-wrap', // 長いテキストを折り返す
-      wordBreak: 'break-word', // 長い単語を折り返す
-    });
+    resultArea.className = 'result-area';
+
     const resultTitle = document.createElement('h3');
     resultTitle.textContent = '回答:';
     Object.assign(resultTitle.style, {
@@ -189,7 +148,6 @@ export class QueryView extends HTMLElement {
 
     section.append(
       title,
-      queryLabel,
       queryInput,
       docSelectionSection,
       submitButton,

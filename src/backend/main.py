@@ -58,6 +58,10 @@ class User(BaseModel):
     username: str
     password: str
 
+class QueryRequest(BaseModel):
+    query: str
+    doc_id: int | None = None
+
 @router.get("/")
 def read_root() -> dict[str, str]:
     return {"message": "Hello Retrieval-Augmented Generation App"}
@@ -115,19 +119,19 @@ def post_login(response: Response, form: OAuth2PasswordRequestForm = Depends()) 
         connection.close()
 
 @router.post("/query", status_code=status.HTTP_200_OK)
-async def ask_question(query: str, doc_id: int | None =None):
+async def ask_question(request: QueryRequest):
 
-    if not query.strip():
+    if not request.query.strip():
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Query text cannot be empty"
             )
     try:
-        answer = run_query_pipeline(query, doc_id)
+        answer = run_query_pipeline(request.query, request.doc_id)
         return {
-            "query": query,
+            "query": request.query,
             "answer": answer,
-            "doc_id": doc_id
+            "doc_id": request.doc_id
         }
     except Exception as e:
         print(e)

@@ -1,0 +1,39 @@
+.manage-docs-container {
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.manage-docs-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.docs-table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-bottom: 15px;
+}
+
+.docs-table th,
+.docs-table td {
+  border: 1px solid black;
+  padding: 8px;
+  text-align: left;
+}
+
+.log-container {
+  margin-top: 10px;
+}
+
+.log-message {
+  font-size: 12px;
+  margin: 2px 0;
+}
+
+.is-loading {
+  cursor: not-allowed;
+  opacity: 0.6;
+}

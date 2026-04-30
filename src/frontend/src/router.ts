@@ -7,13 +7,9 @@ const routes: Record<string, () => Promise<void>> = {
     await import('./login');
     document.getElementById('app')!.innerHTML = '<login-view></login-view>';
   },
-  '/upload': async () => {
-    await import('./upload');
-    document.getElementById('app')!.innerHTML = '<upload-view></upload-view>';
-  },
-  '/ingest': async () => {
-    await import('./ingest');
-    document.getElementById('app')!.innerHTML = '<ingest-view></ingest-view>';
+  '/documents': async () => {
+    await import('./manageDocs');
+    document.getElementById('app')!.innerHTML = '<manage-docs-view></manage-docs-view>';
   },
   '/query': async () => {
     await import('./query');
