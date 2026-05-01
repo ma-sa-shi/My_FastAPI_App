@@ -1,0 +1,30 @@
+.register-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 300px;
+  margin: 20px auto;
+  padding: 20px;
+  border: 1px solid gray;
+}
+
+.register-title {
+  margin-top: 0;
+  text-align: center;
+}
+
+.register-input {
+  padding: 8px;
+  border: 1px solid black;
+}
+
+.register-button {
+  padding: 10px;
+  cursor: pointer;
+  background-color: lightgray;
+  border: 1px solid black;
+}
+
+.register-button:active {
+  background-color: silver;
+}

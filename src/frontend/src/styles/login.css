@@ -1,0 +1,30 @@
+.login-container {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 300px;
+  margin: 20px auto;
+  padding: 20px;
+  border: 1px solid gray;
+}
+
+.login-title {
+  margin-top: 0;
+  text-align: center;
+}
+
+.login-input {
+  padding: 8px;
+  border: 1px solid black;
+}
+
+.login-button {
+  padding: 10px;
+  cursor: pointer;
+  background-color: lightgray;
+  border: 1px solid black;
+}
+
+.login-button:hover {
+  background-color: silver;
+}

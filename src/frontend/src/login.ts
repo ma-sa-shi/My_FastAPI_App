@@ -1,48 +1,63 @@
+import { apiRequest } from "./apiUtils";
+import "./styles/login.css";
+
 export class LoginView extends HTMLElement {
   connectedCallback() {
     this.render();
   }
 
   render() {
-    const section = document.createElement('section');
-    section.style.display = 'flex';
-    section.style.flexDirection = 'column';
-    section.style.gap = '10px';
-    section.style.width = '300px';
-    const title = document.createElement('h2');
-    title.textContent = 'ログイン';
+    const section = document.createElement("section");
+    section.className = "login-container";
 
-    const usernameInput = document.createElement('input');
-    const passwordInput = document.createElement('input');
-    const loginButton = document.createElement('button');
+    const title = document.createElement("h2");
+    title.className = "login-title";
+    title.textContent = "ログイン";
 
-    usernameInput.placeholder = 'Username';
-    passwordInput.placeholder = 'Password';
-    passwordInput.type = 'password';
-    loginButton.textContent = 'ログイン';
+    const usernameInput = document.createElement("input");
+    usernameInput.className = "login-input";
+    const passwordInput = document.createElement("input");
+    passwordInput.className = "login-input";
+    const loginButton = document.createElement("button");
+    loginButton.className = "login-button";
 
-    loginButton.addEventListener('click', async () => {
+    usernameInput.placeholder = "Username";
+    passwordInput.placeholder = "Password";
+    passwordInput.type = "password";
+    loginButton.textContent = "ログイン";
+
+    loginButton.addEventListener("click", async () => {
       const username = usernameInput.value;
       const password = passwordInput.value;
+      const formData = new URLSearchParams();
+      formData.append("username", username);
+      formData.append("password", password);
 
       try {
-        const response = await fetch('/api/login', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams({ username, password }).toString()
+        await apiRequest("/api/login", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/x-www-form-urlencoded",
+          },
+          body: formData,
         });
 
-        if (response.ok) {
-          alert('ログイン成功');
+        alert("ログイン成功");
+        window.location.href = "/documents";
+      } catch (error) {
+
+        if (error instanceof Error) {
+          console.error("[Login Failed]:", error);
+
+          // ログインエラー時はFastAPIのdetailを直接表示しない
+          alert("メールアドレスまたはパスワードが正しくありません");
         } else {
-          alert('ログイン失敗');
+          console.error("[Login Failed]:", error);
         }
-      } catch (e) {
-        console.error(e);
       }
     });
     section.append(title, usernameInput, passwordInput, loginButton);
     this.replaceChildren(section);
   }
 }
-customElements.define('login-view', LoginView);
+customElements.define("login-view", LoginView);
